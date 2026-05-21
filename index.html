@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>解憂雜貨店公告欄</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f4e8d3;
+            font-family: "Microsoft JhengHei", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #5c4033;
+            text-shadow: 1px 1px 2px #d2b48c;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        button {
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #8b5a2b;
+        }
+        .btn-primary:hover {
+            background-color: #a0522d;
+        }
+
+        .btn-secondary {
+            background-color: #5f9ea0;
+        }
+        .btn-secondary:hover {
+            background-color: #4682b4;
+        }
+
+        .btn-danger {
+            background-color: #d32f2f;
+        }
+        .btn-danger:hover {
+            background-color: #b71c1c;
+        }
+
+        /* 佈告欄本體 */
+        .board {
+            background-image: url('https://www.transparenttextures.com/patterns/wood-pattern.png');
+            background-color: #cda36f;
+            width: 95%;
+            max-width: 1400px;
+            min-height: 700px;
+            border: 15px solid #5c4033;
+            border-radius: 10px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 5px 5px 15px rgba(0,0,0,0.3);
+            padding: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            justify-content: center;
+            align-content: flex-start;
+            position: relative;
+        }
+
+        .board-count-hint {
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+            color: #5c4033;
+            font-size: 14px;
+            font-weight: bold;
+            opacity: 0.7;
+        }
+
+        /* 信紙/便利貼樣式 */
+        .note {
+            background-color: #fff9c4;
+            width: 250px;
+            height: 220px;
+            padding: 20px;
+            border-radius: 2px;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.2);
+            position: relative;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .note:hover {
+            z-index: 10;
+            transform: scale(1.05) rotate(0deg) !important;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+        }
+
+        /* 圖釘效果 */
+        .pin {
+            width: 15px;
+            height: 15px;
+            background-color: #d32f2f;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), 2px 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .note-content {
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .note-content h3 {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #222;
+            border-bottom: 1px dashed #b5a28c;
+            padding-bottom: 8px;
+        }
+
+        .note-content p.problem-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #555;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .status-badge {
+            text-align: center;
+            padding: 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .status-replied {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: #2e7d32;
+        }
+
+        .status-waiting {
+            background-color: rgba(255, 152, 0, 0.2);
+            color: #e65100;
+        }
+
+        /* 彈出視窗共用樣式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 500px;
+            max-width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #5c4033;
+            border-bottom: 2px solid #deb887;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .form-group input[type="text"], .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: -5px;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+            color: #666;
+            cursor: pointer;
+        }
+
+        .form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .cancel-btn {
+            background-color: #999;
+        }
+        .cancel-btn:hover {
+            background-color: #777;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #888;
+        }
+        .close-btn:hover { color: #333; }
+
+        /* 詳細信件視窗特定樣式 */
+        .detail-problem {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .detail-reply-section {
+            background-color: #fff8e1;
+            padding: 15px;
+            border-left: 4px solid #ffca28;
+            border-radius: 0 5px 5px 0;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .reply-author {
+            font-weight: bold;
+            color: #8b5a2b;
+            margin-bottom: 10px;
+        }
+
+        /* 歷史信件列表樣式 */
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover {
+            background-color: #f5f5f5;
+        }
+
+        .history-item-info strong {
+            display: block;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .history-item-info span {
+            color: #777;
+            font-size: 14px;
+        }
+        .history-badge {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>解憂雜貨店公告欄</h1>
+    
+    <div class="controls">
+        <button class="btn-primary" onclick="openPostModal()">＋ 投遞新的煩惱</button>
+        <button class="btn-secondary" onclick="openHistoryModal()">📂 閱覽所有信件</button>
+    </div>
+
+    <div class="board" id="board">
+        <!-- 信件會由 JavaScript 自動生成在這裡 -->
+        <div class="board-count-hint" id="boardHint"></div>
+    </div>
+
+    <!-- 新增煩惱的彈出視窗 -->
+    <div class="modal" id="postModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModals()">&times;</span>
+            <h2>寫下你的煩惱</h2>
+            <div class="form-group">
+                <label>署名（可不填）：</label>
+                <input type="text" id="authorName" placeholder="例如：辰鴻">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="isAnonymous">
+                <label for="isAnonymous">不顯示署名（將隨機獲得可愛暱稱！）</label>
+            </div>
+            <div class="form-group">
+                <label>煩惱內容：</label>
+                <textarea id="problemText" rows="5" placeholder="請寫下你最近的煩惱..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button class="cancel-btn" onclick="closeModals()">取消</button>
+                <button class="btn-primary" onclick="submitPost()">投遞信件</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 信件詳細內容視窗 -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModals()">&times;</span>
+            <h2 id="detailTitle">來自 xxx 的信</h2>
+            
+            <div class="detail-problem" id="detailProblemText"></div>
+            
+            <div id="detailReplyContainer" style="display: none;">
+                <div class="reply-author">解憂爺爺的回信：</div>
+                <div class="detail-reply-section" id="detailReplyText"></div>
+            </div>
+
+            <div id="detailWaitingContainer" style="display: none; text-align: center; color: #888; margin: 20px 0;">
+                ⏳ 這封信還在等待爺爺的回覆喔...
+            </div>
+
+            <div class="form-actions" style="justify-content: center; width: 100%;">
+                <button id="btnWriteReply" class="btn-primary" onclick="verifyPasswordAndOpenReply(false)">✎ 撰寫回信</button>
+                <button id="btnEditReply" class="btn-secondary" onclick="verifyPasswordAndOpenReply(true)" style="display: none;">✎ 修改回信</button>
+                <button id="btnDeleteLetter" class="btn-danger" onclick="verifyPasswordAndDelete()">🗑️ 刪除信件</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 撰寫/修改回信的彈出視窗 -->
+    <div class="modal" id="replyModal">
+        <div class="modal-content" style="z-index: 101;">
+            <span class="close-btn" onclick="closeReplyModal()">&times;</span>
+            <h2 id="replyModalTitle">爺爺的回信</h2>
+            <div class="form-group">
+                <label>回信內容：</label>
+                <textarea id="replyInputText" rows="8" placeholder="請寫下給這位同學的建議..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button class="cancel-btn" onclick="closeReplyModal()">取消</button>
+                <button class="btn-primary" onclick="submitReply()">送出回信</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 所有信件(歷史)列表視窗 -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModals()">&times;</span>
+            <h2>所有信件總覽</h2>
+            <ul class="history-list" id="historyList">
+                <!-- 列表由 JS 生成 -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 系統專屬密碼
+        const GRANDPA_PASSWORD = "GUAVA";      // 回信/修改密碼
+        const DELETE_PASSWORD = "HOLYFIRE";   // 刪除密碼（神秘之力）
+
+        // 匿名隨機可愛暱稱清單
+        const anonymousNames = [
+            "煩惱的小天使",
+            "可愛可以吃嗎",
+            "我想吃麥當勞",
+            "珍珠奶茶半糖少冰",
+            "八曜和茶永遠排不到",
+            "冰箱裡被遺忘的粽子",
+            "橡皮擦永遠會自己不見",
+            "剛睡醒不知道第幾節課",
+            "屁不是我放的",
+            "會咬人的鵝鵝鵝"
+        ];
+
+        // 全域變數記錄目前正在查看的信件 ID
+        let currentLetterId = null;
+
+        // 預設資料庫
+        let letters = [
+            {
+                id: 1,
+                author: "辰鴻",
+                isAnonymous: true,
+                displayAuthor: "煩惱的小天使",
+                problem: "最近功課好多，無法寫完。",
+                reply: "老爺爺我啊，現在光是報紙看太久，眼睛就會痠痛，所以我完全能體會你面對那麼多功課和考試有多辛苦。不過，如果要吃掉一顆大西瓜，我們是不可能一口吞下去的，對吧？你可以試著把功課切成一小塊一小塊的，今天吃一塊，明天吃一塊。只要每天解決一點點，不知不覺中，你會發現那些功課已經被你輕鬆地消化掉了。",
+                color: "#fff9c4",
+                rotation: -3,
+                timestamp: Date.now() - 600000 
+            },
+            {
+                id: 2,
+                author: "辰鴻",
+                isAnonymous: true,
+                displayAuthor: "可愛可以吃嗎",
+                problem: "最近我們要期中考。",
+                reply: "面對即將到來的期中考，那顆名叫「期中考」的大西瓜確實讓人很有壓力。你可以試著把複習範圍切成一小塊一小塊的，每天準備一點。只要你每天都有一點點進步，到了考試那天，你一定能發揮出最好的自己。",
+                color: "#e1f5fe",
+                rotation: 2,
+                timestamp: Date.now() - 500000
+            },
+            {
+                id: 3,
+                author: "署名辰鴻，但不是他",
+                isAnonymous: true,
+                displayAuthor: "我想吃麥當勞",
+                problem: "最近要大隊接力，而且要跟四年級比，我好苦惱。",
+                reply: "看到這封信時，老爺爺忍不住笑了。借用別人的名字來寫信，看來你真的很苦惱呢！不過你想想，如果輸給四年級的學長姊，那是理所當然的，因為他們多吃了一年的飯啊！打如果你們能緊緊咬住他們，甚至超越他們，那你們可就是最厲害的小英雄了。既然怎麼算都不吃虧，不如就放下包袱，好好享受在操場上追逐風的感覺吧！",
+                color: "#f8bbd0",
+                rotation: -2,
+                timestamp: Date.now() - 400000
+            },
+            {
+                id: 4,
+                author: "未署名",
+                isAnonymous: true,
+                displayAuthor: "珍珠奶茶半糖少冰",
+                problem: "最近我們要考好多考卷，希望都能考九十分以上。",
+                reply: "想要追求好成績，是一件非常棒的事情！不過，老爺爺想告訴你，考卷只能測驗出考卷上的東西，測不出你真正有多聰明。如果你考了九十分以上，那非常棒；但如果少了一點點，請告訴自己，那些沒拿到的分數，只是藏在未來等你慢慢去發掘的寶藏。只要你每一張考卷都盡了全力，老爺爺相信你的人生絕對是一百分。",
+                color: "#e8f5e9",
+                rotation: 4,
+                timestamp: Date.now() - 300000
+            },
+            {
+                id: 5,
+                author: "辰鴻",
+                isAnonymous: true,
+                displayAuthor: "八曜和茶永遠排不到",
+                problem: "我要準備比壘球擲遠，我好緊張。",
+                reply: "辰鴻，你真的是個大忙人呢！其實啊，緊張並不是一件壞事，那表示 your body 裡充滿了能量，正準備要爆發出來。當你握住那顆壘球時，試著把你心裡所有的「緊張」統統揉進那顆球裡面，然後用力一揮，把緊張丟得越遠越好！老爺爺相信，那顆裝滿能量的球，一定能飛得很遠很遠。",
+                color: "#fff3e0",
+                rotation: -4,
+                timestamp: Date.now() - 200000
+            },
+            {
+                id: 6,
+                author: "守恩",
+                isAnonymous: true,
+                displayAuthor: "橡皮擦永遠會自己不見",
+                problem: "我去學校的圖書館，找不到想看的書，會很無聊。",
+                reply: "這真是一個特別的煩惱。如果圖書館裡真的已經沒有你想看的書了，老爺爺要恭喜你！這代表你已經準備好要寫屬於自己的故事了。下次去圖書館如果覺得無聊，不妨帶一本空白的筆記本，把你腦袋裡那些有趣的想法寫下來、畫下來。說不定未來的某一天，會有其他小朋友在圖書館裡，因為找不到書而拿起你寫的故事呢。",
+                color: "#fff9c4",
+                rotation: 3,
+                timestamp: Date.now() - 100000
+            },
+            {
+                id: 7,
+                author: "亮路",
+                isAnonymous: true,
+                displayAuthor: "會咬人的鵝鵝鵝",
+                problem: "感冒了，不知道下禮拜的大隊接力能不能跑好......。",
+                reply: "老爺爺很懂生病時那種心有餘而力不足的感覺。你的身體現在正在大聲告訴你：「我需要休息！」大隊接力最棒的地方，在於這是一項團隊運動。如果你下週感覺好多了，就盡力去跑；如果還是不舒服，在場邊用力地（但要保護好喉嚨喔）為隊友加油，把你的精神傳遞給他們，這同樣是在參與接力賽。記住，健康的身體才是你人生中最重要的一根接力棒，千萬別弄掉啦。",
+                color: "#e1f5fe",
+                rotation: -1,
+                timestamp: Date.now()
+            }
+        ];
+
+        const noteColors = ["#fff9c4", "#e1f5fe", "#f8bbd0", "#e8f5e9", "#fff3e0"];
+
+        // 渲染佈告欄（顯示最新 10 筆）
+        function renderBoard() {
+            const board = document.getElementById("board");
+            board.innerHTML = '<div class="board-count-hint" id="boardHint"></div>';
+
+            letters.sort((a, b) => a.timestamp - b.timestamp);
+            const displayLetters = letters.slice(-10);
+
+            displayLetters.forEach(letter => {
+                const noteDiv = document.createElement("div");
+                noteDiv.className = "note";
+                noteDiv.style.backgroundColor = letter.color;
+                noteDiv.style.transform = `rotate(${letter.rotation}deg)`;
+                noteDiv.onclick = () => openDetailModal(letter.id);
+
+                const statusHTML = letter.reply 
+                    ? `<div class="status-badge status-replied">💌 爺爺已回信</div>`
+                    : `<div class="status-badge status-waiting">⏳ 等待回信中...</div>`;
+
+                noteDiv.innerHTML = `
+                    <div class="pin"></div>
+                    <div class="note-content">
+                        <h3>來自：${letter.displayAuthor}</h3>
+                        <p class="problem-text">${letter.problem}</p>
+                    </div>
+                    ${statusHTML}
+                `;
+                board.appendChild(noteDiv);
+            });
+
+            const hint = document.getElementById("boardHint");
+            if (letters.length > 10) {
+                hint.innerText = `版面已滿，目前顯示最新 10 封信（總共 ${letters.length} 封）`;
+            } else {
+                hint.innerText = `目前總共 ${letters.length} 封信`;
+            }
+        }
+
+        function closeModals() {
+            document.getElementById("postModal").style.display = "none";
+            document.getElementById("detailModal").style.display = "none";
+            document.getElementById("historyModal").style.display = "none";
+            closeReplyModal();
+            document.getElementById("authorName").value = "";
+            document.getElementById("isAnonymous").checked = false;
+            document.getElementById("problemText").value = "";
+        }
+
+        function openPostModal() {
+            closeModals();
+            document.getElementById("postModal").style.display = "flex";
+        }
+
+        function openDetailModal(id) {
+            closeModals();
+            currentLetterId = id;
+            const letter = letters.find(l => l.id === id);
+            if (!letter) return;
+            
+            document.getElementById("detailTitle").innerText = `來自「${letter.displayAuthor}」的信`;
+            document.getElementById("detailProblemText").innerText = letter.problem;
+
+            const replyContainer = document.getElementById("detailReplyContainer");
+            const waitingContainer = document.getElementById("detailWaitingContainer");
+            const btnWrite = document.getElementById("btnWriteReply");
+            const btnEdit = document.getElementById("btnEditReply");
+
+            if (letter.reply) {
+                replyContainer.style.display = "block";
+                waitingContainer.style.display = "none";
+                document.getElementById("detailReplyText").innerText = letter.reply;
+                btnWrite.style.display = "none";
+                btnEdit.style.display = "inline-block";
+            } else {
+                replyContainer.style.display = "none";
+                waitingContainer.style.display = "block";
+                btnWrite.style.display = "inline-block";
+                btnEdit.style.display = "none";
+            }
+
+            document.getElementById("detailModal").style.display = "flex";
+        }
+
+        // 驗證回信密碼
+        function verifyPasswordAndOpenReply(isEdit) {
+            const password = prompt("請輸入店長爺爺的專屬密碼：");
+            if (password === null) return;
+            
+            if (password.toUpperCase() === GRANDPA_PASSWORD) {
+                document.getElementById("replyModalTitle").innerText = isEdit ? "修改回信" : "撰寫回信";
+                const letter = letters.find(l => l.id === currentLetterId);
+                document.getElementById("replyInputText").value = letter.reply || "";
+                document.getElementById("replyModal").style.display = "flex";
+            } else {
+                alert("密碼錯誤！只有解憂雜貨店的店長爺爺才能為大家解憂喔！");
+            }
+        }
+
+        // 驗證刪除密碼（神秘之力）
+        function verifyPasswordAndDelete() {
+            const password = prompt("請輸入神秘之力密碼以刪除此信件：");
+            if (password === null) return;
+
+            if (password.toUpperCase() === DELETE_PASSWORD) {
+                const confirmDelete = confirm("確定要刪除這封信件嗎？刪除後將無法復原喔！");
+                if (!confirmDelete) return;
+
+                const letterIndex = letters.findIndex(l => l.id === currentLetterId);
+                if (letterIndex !== -1) {
+                    letters.splice(letterIndex, 1);
+                    renderBoard();
+                    closeModals();
+                    alert("信件已成功刪除！");
+                }
+            } else {
+                alert("神秘之力密碼錯誤！無法刪除信件。");
+            }
+        }
+
+        function closeReplyModal() {
+            document.getElementById("replyModal").style.display = "none";
+            document.getElementById("replyInputText").value = "";
+        }
+
+        function submitPost() {
+            let authorInput = document.getElementById("authorName").value.trim();
+            const isAnonymous = document.getElementById("isAnonymous").checked;
+            const problem = document.getElementById("problemText").value.trim();
+
+            if (!problem) {
+                alert("煩惱內容不能是空白的喔！");
+                return;
+            }
+            
+            let finalDisplayAuthor = authorInput;
+            if (isAnonymous || !authorInput) {
+                finalDisplayAuthor = anonymousNames[Math.floor(Math.random() * anonymousNames.length)];
+            }
+
+            const newLetter = {
+                id: Date.now(), 
+                author: authorInput || "無名氏", 
+                isAnonymous: isAnonymous || !authorInput,
+                displayAuthor: finalDisplayAuthor,
+                problem: problem,
+                reply: "",
+                color: noteColors[Math.floor(Math.random() * noteColors.length)], 
+                rotation: (Math.random() * 8) - 4,
+                timestamp: Date.now()
+            };
+
+            letters.push(newLetter);
+            renderBoard();
+            closeModals();
+        }
+
+        function submitReply() {
+            const reply = document.getElementById("replyInputText").value.trim();
+            if (!reply) {
+                alert("回信內容不能是空白的喔！");
+                return;
+            }
+
+            const letterIndex = letters.findIndex(l => l.id === currentLetterId);
+            if (letterIndex !== -1) {
+                letters[letterIndex].reply = reply;
+                renderBoard();
+                closeReplyModal();
+                openDetailModal(currentLetterId);
+            }
+        }
+
+        function openHistoryModal() {
+            closeModals();
+            const list = document.getElementById("historyList");
+            list.innerHTML = "";
+
+            const sortedLetters = [...letters].sort((a, b) => b.timestamp - a.timestamp);
+
+            sortedLetters.forEach(letter => {
+                const li = document.createElement("li");
+                li.className = "history-item";
+                li.onclick = () => {
+                    document.getElementById("historyModal").style.display = "none";
+                    openDetailModal(letter.id);
+                };
+
+                const shortProblem = letter.problem.length > 20 ? letter.problem.substring(0, 20) + "..." : letter.problem;
+                const badgeClass = letter.reply ? "status-replied" : "status-waiting";
+                const badgeText = letter.reply ? "已回覆" : "待回覆";
+
+                li.innerHTML = `
+                    <div class="history-item-info">
+                        <strong>來自：${letter.displayAuthor}</strong>
+                        <span>${shortProblem}</span>
+                    </div>
+                    <div class="history-badge ${badgeClass}">${badgeText}</div>
+                `;
+                list.appendChild(li);
+            });
+
+            document.getElementById("historyModal").style.display = "flex";
+        }
+
+        renderBoard();
+    </script>
+</body>
+</html>
