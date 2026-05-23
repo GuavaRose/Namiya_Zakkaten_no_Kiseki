@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>解憂雜貨店公告欄</title>
+    <!-- 引入 Firebase SDK (使用相容版本 v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         body {
             margin: 0;
@@ -414,115 +417,73 @@
     </div>
 
     <script>
-        // 系統專屬密碼
-        const GRANDPA_PASSWORD = "GUAVA";      // 回信/修改密碼
-        const DELETE_PASSWORD = "HOLYFIRE";   // 刪除密碼（神秘之力）
+        // --- 填入你專屬的 Firebase 配置 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBoIGFDKpDQWCkgaMLoRt_I5jvGyR_y8hs",
+            authDomain: "namiya-zakkaten-no-kiseki.firebaseapp.com",
+            databaseURL: "https://namiya-zakkaten-no-kiseki-default-rtdb.firebaseio.com",
+            projectId: "namiya-zakkaten-no-kiseki",
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // 系統管理密碼
+        const GRANDPA_PASSWORD = "GUAVA";      // 回信密碼
+        const DELETE_PASSWORD = "HOLYFIRE";   // 刪除密碼
 
         // 匿名隨機可愛暱稱清單
         const anonymousNames = [
-            "煩惱的小天使",
-            "可愛可以吃嗎",
-            "我想吃麥當勞",
-            "珍珠奶茶半糖少冰",
-            "八曜和茶永遠排不到",
-            "冰箱裡被遺忘的粽子",
-            "橡皮擦永遠會自己不見",
-            "剛睡醒不知道第幾節課",
-            "屁不是我放的",
-            "會咬人的鵝鵝鵝"
+            "煩惱的小天使", "可愛可以吃嗎", "我想吃麥當勞", "珍珠奶茶半糖少冰",
+            "八曜和茶永遠排不到", "冰箱裡被遺忘的粽子", "橡皮擦永遠會自己不見",
+            "剛睡醒不知道第幾節課", "屁不是我放的", "會咬人的鵝鵝鵝"
         ];
 
-        // 全域變數記錄目前正在查看的信件 ID
+        // 全域變數
+        let letters = [];
         let currentLetterId = null;
+        const noteColors = ["#fff9c4", "#e1f5fe", "#f8bbd0", "#e8f5e9", "#fff3e0"];
 
-        // 預設資料庫
-        let letters = [
-            {
-                id: 1,
-                author: "辰鴻",
-                isAnonymous: true,
-                displayAuthor: "煩惱的小天使",
-                problem: "最近功課好多，無法寫完。",
-                reply: "老爺爺我啊，現在光是報紙看太久，眼睛就會痠痛，所以我完全能體會你面對那麼多功課和考試有多辛苦。不過，如果要吃掉一顆大西瓜，我們是不可能一口吞下去的，對吧？你可以試著把功課切成一小塊一小塊的，今天吃一塊，明天吃一塊。只要每天解決一點點，不知不覺中，你會發現那些功課已經被你輕鬆地消化掉了。",
-                color: "#fff9c4",
-                rotation: -3,
-                timestamp: Date.now() - 600000 
-            },
-            {
-                id: 2,
-                author: "辰鴻",
-                isAnonymous: true,
-                displayAuthor: "可愛可以吃嗎",
-                problem: "最近我們要期中考。",
-                reply: "面對即將到來的期中考，那顆名叫「期中考」的大西瓜確實讓人很有壓力。你可以試著把複習範圍切成一小塊一小塊的，每天準備一點。只要你每天都有一點點進步，到了考試那天，你一定能發揮出最好的自己。",
-                color: "#e1f5fe",
-                rotation: 2,
-                timestamp: Date.now() - 500000
-            },
-            {
-                id: 3,
-                author: "署名辰鴻，但不是他",
-                isAnonymous: true,
-                displayAuthor: "我想吃麥當勞",
-                problem: "最近要大隊接力，而且要跟四年級比，我好苦惱。",
-                reply: "看到這封信時，老爺爺忍不住笑了。借用別人的名字來寫信，看來你真的很苦惱呢！不過你想想，如果輸給四年級的學長姊，那是理所當然的，因為他們多吃了一年的飯啊！打如果你們能緊緊咬住他們，甚至超越他們，那你們可就是最厲害的小英雄了。既然怎麼算都不吃虧，不如就放下包袱，好好享受在操場上追逐風的感覺吧！",
-                color: "#f8bbd0",
-                rotation: -2,
-                timestamp: Date.now() - 400000
-            },
-            {
-                id: 4,
-                author: "未署名",
-                isAnonymous: true,
-                displayAuthor: "珍珠奶茶半糖少冰",
-                problem: "最近我們要考好多考卷，希望都能考九十分以上。",
-                reply: "想要追求好成績，是一件非常棒的事情！不過，老爺爺想告訴你，考卷只能測驗出考卷上的東西，測不出你真正有多聰明。如果你考了九十分以上，那非常棒；但如果少了一點點，請告訴自己，那些沒拿到的分數，只是藏在未來等你慢慢去發掘的寶藏。只要你每一張考卷都盡了全力，老爺爺相信你的人生絕對是一百分。",
-                color: "#e8f5e9",
-                rotation: 4,
-                timestamp: Date.now() - 300000
-            },
-            {
-                id: 5,
-                author: "辰鴻",
-                isAnonymous: true,
-                displayAuthor: "八曜和茶永遠排不到",
-                problem: "我要準備比壘球擲遠，我好緊張。",
-                reply: "辰鴻，你真的是個大忙人呢！其實啊，緊張並不是一件壞事，那表示 your body 裡充滿了能量，正準備要爆發出來。當你握住那顆壘球時，試著把你心裡所有的「緊張」統統揉進那顆球裡面，然後用力一揮，把緊張丟得越遠越好！老爺爺相信，那顆裝滿能量的球，一定能飛得很遠很遠。",
-                color: "#fff3e0",
-                rotation: -4,
-                timestamp: Date.now() - 200000
-            },
-            {
-                id: 6,
-                author: "守恩",
-                isAnonymous: true,
-                displayAuthor: "橡皮擦永遠會自己不見",
-                problem: "我去學校的圖書館，找不到想看的書，會很無聊。",
-                reply: "這真是一個特別的煩惱。如果圖書館裡真的已經沒有你想看的書了，老爺爺要恭喜你！這代表你已經準備好要寫屬於自己的故事了。下次去圖書館如果覺得無聊，不妨帶一本空白的筆記本，把你腦袋裡那些有趣的想法寫下來、畫下來。說不定未來的某一天，會有其他小朋友在圖書館裡，因為找不到書而拿起你寫的故事呢。",
-                color: "#fff9c4",
-                rotation: 3,
-                timestamp: Date.now() - 100000
-            },
-            {
-                id: 7,
-                author: "亮路",
-                isAnonymous: true,
-                displayAuthor: "會咬人的鵝鵝鵝",
-                problem: "感冒了，不知道下禮拜的大隊接力能不能跑好......。",
-                reply: "老爺爺很懂生病時那種心有餘而力不足的感覺。你的身體現在正在大聲告訴你：「我需要休息！」大隊接力最棒的地方，在於這是一項團隊運動。如果你下週感覺好多了，就盡力去跑；如果還是不舒服，在場邊用力地（但要保護好喉嚨喔）為隊友加油，把你的精神傳遞給他們，這同樣是在參與接力賽。記住，健康的身體才是你人生中最重要的一根接力棒，千萬別弄掉啦。",
-                color: "#e1f5fe",
-                rotation: -1,
-                timestamp: Date.now()
-            }
+        // 預設的 7 封信件資料（用於當資料庫完全是空的時自動初始化）
+        const defaultLetters = [
+            { id: "1", author: "辰鴻", isAnonymous: true, displayAuthor: "煩惱的小天使", problem: "最近功課好多，無法寫完。", reply: "老爺爺我啊，現在光是報紙看太久，眼睛就會痠痛，所以我完全能體會你面對那麼多功課和考試有多辛苦。不過，如果要吃掉一顆大西瓜，我們是不可能一口吞下去的，對吧？你可以試著把功課切成一小塊一小塊的，今天吃一塊，明天吃一塊。只要每天解決一點點，不知不覺中，你會發現那些功課已經被你輕鬆地消化掉了。", color: "#fff9c4", rotation: -3, timestamp: 1716432000001 },
+            { id: "2", author: "辰鴻", isAnonymous: true, displayAuthor: "可愛可以吃嗎", problem: "最近我們要期中考。", reply: "面對即將到來的期中考，那顆名叫「期中考」的大西瓜確實讓人很有壓力。你可以試著把複習範圍切成一小塊一小塊的，每天準備一點。只要你每天都有一點點進步，到了考試那天，你一定能發揮出最好的自己。", color: "#e1f5fe", rotation: 2, timestamp: 1716432000002 },
+            { id: "3", author: "署名辰鴻，但不是他", isAnonymous: true, displayAuthor: "我想吃麥當勞", problem: "最近要大隊接力，而且要跟四年級比，我好苦惱。", reply: "看到這封信時，老爺爺忍不住笑了。借用別人的名字來寫信，看來你真的很苦惱呢！不過你想想，如果輸給四年級的學長姊，那是理所當然的，因為他們多吃了一年的飯啊！打如果你們能緊緊咬住他們，甚至超越他們，那幕你們可就是最厲害的小英雄了。既然怎麼算都不吃虧，不如就放下包袱，好好享受在操場上追逐風的感覺吧！", color: "#f8bbd0", rotation: -2, timestamp: 1716432000003 },
+            { id: "4", author: "未署名", isAnonymous: true, displayAuthor: "珍珠奶茶半糖少冰", problem: "最近我們要考好多考卷，希望都能考九十分以上。", reply: "想要追求好成績，是一件非常棒的事情！不過，老爺爺想告訴你，考卷只能測驗出考卷上的東西，測不出你真正有多聰明。如果你考了九十分以上，那非常棒；但如果少了一點點，請告訴自己，那些沒拿到的分數，只是藏在未來等你慢慢去發掘的寶藏。只要你每一張考卷都盡了全力，老爺爺相信你的人生絕對是一百分。", color: "#e8f5e9", rotation: 4, timestamp: 1716432000004 },
+            { id: "5", author: "辰鴻", isAnonymous: true, displayAuthor: "八曜和茶永遠排不到", problem: "我要準備比壘球擲遠，我好緊張。", reply: "辰鴻，你真的是個大忙人呢！其實啊，緊張並不是一件壞事，那表示你的身體裡充滿了能量，正準備要爆發出來。當你握住那顆壘球時，試著把你心裡所有的「緊張」統統揉進那顆球裡面，然後用力一揮，把緊張丟得越遠越好！老爺爺相信，那顆裝滿能量的球，一定能飛得很遠很遠。", color: "#fff3e0", rotation: -4, timestamp: 1716432000005 },
+            { id: "6", author: "守恩", isAnonymous: true, displayAuthor: "橡皮擦永遠會自己不見", problem: "我去學校的圖書館，找不到想看的書，會很無聊。", reply: "這真是一個特別的煩惱。如果圖書館裡真的已經沒有你想看的書了，老爺爺要恭喜你！這代表你已經準備好要寫屬於自己的故事了。下次去圖書館如果覺得無聊，不妨帶一本空白的筆記本，把你腦袋裡那些有趣的想法寫下來、畫下來。說不定未來的某一天，會有其他小朋友在圖書館裡，因為找不到書而拿起你寫的故事呢。", color: "#fff9c4", rotation: 3, timestamp: 1716432000006 },
+            { id: "7", author: "亮路", isAnonymous: true, displayAuthor: "會咬人的鵝鵝鵝", problem: "感冒了，不知道下禮拜的大隊接力能不能跑好......。", reply: "老爺爺很懂生病時那種心有餘而力不足的感覺。你的身體現在正在大聲告訴你：「我需要休息！」大隊接力最棒的地方，在於這是一項團隊運動。如果你下週感覺好多了，就盡力去跑；如果還是不舒服，在場邊用力地（但要保護好喉嚨喔）為隊友加油，把你的精神傳遞給他們，這同樣是在參與接力賽。記住，健康的身體才是你人生中最重要的一根接力棒，千萬別弄掉啦。", color: "#e1f5fe", rotation: -1, timestamp: 1716432000007 }
         ];
 
-        const noteColors = ["#fff9c4", "#e1f5fe", "#f8bbd0", "#e8f5e9", "#fff3e0"];
+        // 監聽雲端資料庫的資料變動（即時同步）
+        database.ref("letters").on("value", (snapshot) => {
+            const data = snapshot.val();
+            
+            // 如果雲端完全沒資料，就自動注入 7 封預設信件
+            if (!data) {
+                defaultLetters.forEach(l => {
+                    database.ref("letters/" + l.id).set(l);
+                });
+                return;
+            }
+
+            // 將物件格式轉為陣列
+            letters = [];
+            for (let id in data) {
+                letters.push(data[id]);
+            }
+
+            // 渲染畫面
+            renderBoard();
+        });
 
         // 渲染佈告欄（顯示最新 10 筆）
         function renderBoard() {
             const board = document.getElementById("board");
             board.innerHTML = '<div class="board-count-hint" id="boardHint"></div>';
 
+            // 排序 (舊到新)
             letters.sort((a, b) => a.timestamp - b.timestamp);
             const displayLetters = letters.slice(-10);
 
@@ -574,7 +535,7 @@
         function openDetailModal(id) {
             closeModals();
             currentLetterId = id;
-            const letter = letters.find(l => l.id === id);
+            const letter = letters.find(l => l.id == id);
             if (!letter) return;
             
             document.getElementById("detailTitle").innerText = `來自「${letter.displayAuthor}」的信`;
@@ -608,7 +569,7 @@
             
             if (password.toUpperCase() === GRANDPA_PASSWORD) {
                 document.getElementById("replyModalTitle").innerText = isEdit ? "修改回信" : "撰寫回信";
-                const letter = letters.find(l => l.id === currentLetterId);
+                const letter = letters.find(l => l.id == currentLetterId);
                 document.getElementById("replyInputText").value = letter.reply || "";
                 document.getElementById("replyModal").style.display = "flex";
             } else {
@@ -616,7 +577,7 @@
             }
         }
 
-        // 驗證刪除密碼（神秘之力）
+        // 驗證刪除密碼
         function verifyPasswordAndDelete() {
             const password = prompt("請輸入神秘之力密碼以刪除此信件：");
             if (password === null) return;
@@ -625,13 +586,12 @@
                 const confirmDelete = confirm("確定要刪除這封信件嗎？刪除後將無法復原喔！");
                 if (!confirmDelete) return;
 
-                const letterIndex = letters.findIndex(l => l.id === currentLetterId);
-                if (letterIndex !== -1) {
-                    letters.splice(letterIndex, 1);
-                    renderBoard();
-                    closeModals();
-                    alert("信件已成功刪除！");
-                }
+                // 從雲端刪除該筆資料
+                database.ref("letters/" + currentLetterId).remove()
+                    .then(() => {
+                        closeModals();
+                        alert("信件已成功從雲端刪除！");
+                    });
             } else {
                 alert("神秘之力密碼錯誤！無法刪除信件。");
             }
@@ -642,6 +602,7 @@
             document.getElementById("replyInputText").value = "";
         }
 
+        // 學生投稿推送到雲端
         function submitPost() {
             let authorInput = document.getElementById("authorName").value.trim();
             const isAnonymous = document.getElementById("isAnonymous").checked;
@@ -657,8 +618,10 @@
                 finalDisplayAuthor = anonymousNames[Math.floor(Math.random() * anonymousNames.length)];
             }
 
+            const newId = Date.now().toString(); // 使用時間戳作為雲端唯一 ID
+
             const newLetter = {
-                id: Date.now(), 
+                id: newId, 
                 author: authorInput || "無名氏", 
                 isAnonymous: isAnonymous || !authorInput,
                 displayAuthor: finalDisplayAuthor,
@@ -669,11 +632,14 @@
                 timestamp: Date.now()
             };
 
-            letters.push(newLetter);
-            renderBoard();
-            closeModals();
+            // 推送到 Firebase
+            database.ref("letters/" + newId).set(newLetter)
+                .then(() => {
+                    closeModals();
+                });
         }
 
+        // 爺爺回信推送到雲端
         function submitReply() {
             const reply = document.getElementById("replyInputText").value.trim();
             if (!reply) {
@@ -681,13 +647,12 @@
                 return;
             }
 
-            const letterIndex = letters.findIndex(l => l.id === currentLetterId);
-            if (letterIndex !== -1) {
-                letters[letterIndex].reply = reply;
-                renderBoard();
-                closeReplyModal();
-                openDetailModal(currentLetterId);
-            }
+            // 更新 Firebase 上的 reply 欄位
+            database.ref("letters/" + currentLetterId).update({ reply: reply })
+                .then(() => {
+                    closeReplyModal();
+                    openDetailModal(currentLetterId);
+                });
         }
 
         function openHistoryModal() {
@@ -695,6 +660,7 @@
             const list = document.getElementById("historyList");
             list.innerHTML = "";
 
+            // 歷史信件以最新的排在最上面 (新到舊)
             const sortedLetters = [...letters].sort((a, b) => b.timestamp - a.timestamp);
 
             sortedLetters.forEach(letter => {
@@ -721,8 +687,6 @@
 
             document.getElementById("historyModal").style.display = "flex";
         }
-
-        renderBoard();
     </script>
 </body>
 </html>
